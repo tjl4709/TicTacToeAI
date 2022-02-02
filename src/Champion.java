@@ -30,9 +30,9 @@ public class Champion
             file.close();
         } catch (Exception e) {e.printStackTrace();}
     }
-    public String move(String board)
+    public void move(Board board)
     {
-        root = root.setChild(board).getBestChild();
-        return root.getBoard();
+        root = root.setChild(board.toString()).getBestChild();
+        board.move(root.getMove(), root.getSymbol());
     }
 }

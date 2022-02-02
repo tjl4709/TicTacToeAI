@@ -1,16 +1,17 @@
 import java.io.*;
-import java.util.ArrayList;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.HashMap;
 
 public class TicTacToe
 {
-    private static String currentPos = "eeeeeeeee";             //9 spaces of board; e=empty
     private static Scanner keyboard = new Scanner(System.in);
-    private static AI ai = new AI('X'), ai2 = new AI('O');
+    private static AI ai = new AI(Symbol.X), ai2 = new AI(Symbol.O);
     private static Champion champ = new Champion();
+    private static Board board = new Board();
 
     public static void main(String[] args) {
+        Symbol s;
         System.out.println("The aim of the game is to get three \"O\"s in a row. The board" +
                 "\nis laid out like the number pad with the 9th space on the top" +
                 "\nright and the 1st space on the bottom left. On your turn, " +
@@ -22,8 +23,8 @@ public class TicTacToe
             try {
                 FileInputStream file = new FileInputStream("file.ser");
                 ObjectInputStream in = new ObjectInputStream(file);
-                HashMap<String, ArrayList<Integer>> pos = (HashMap<String, ArrayList<Integer>>) in.readObject();
-                ai.setPos(pos);
+                Map<String, MoveChance> pos = (Map<String, MoveChance>) in.readObject();
+                ai.setPos((HashMap<String, MoveChance>) pos);
 //                ai2.setPos(pos);
                 in.close();
                 file.close();
@@ -40,46 +41,42 @@ public class TicTacToe
 
         boolean cont = true;
         while (cont) {
-            clearBoard();
+            board.clear();
             ai.clearGamelog();
             ai2.clearGamelog();
             if (Math.random() < .5) {                           //50% chance ai goes first
                 if (play == 'm') {
                     champ.setTree(true);
-                    currentPos = champ.move(currentPos);
+                    champ.move(board);
                 } else if (play == 'c') {
                     champ.setTree(false);
-                    currentPos = ai.move(currentPos);
+                    ai.move(board);
                 } else
-                    currentPos= ai.move(currentPos);                //sets the space the ai chooses to "X"
+                    ai.move(board);                //sets the space the ai chooses to "X"
             } else if (play == 'c')
                 champ.setTree(true);
             else if (play == 'm')
                 champ.setTree(false);
-            while (!(winMove('X') || winMove('O') || full())) {           //checks if the player won
-                drawBoard();
-                if (play == 'p')
-                    currentPos = ai2.move(currentPos);
-                else if (play == 'c')
-                    currentPos = champ.move(currentPos);
-                else
-                    currentPos = playerMove(play != 'm');                  //player inputs 1-9
 
-                if (winMove('O') || winMove('X') || full())
+            while (board.whoWon() == Symbol.Empty && !board.isFull()) {           //checks if the player won
+                board.draw();
+                if (play == 'p') ai2.move(board);
+                else if (play == 'c') champ.move(board);
+                else playerMove(play != 'm');                  //player inputs 1-9
+
+                if (board.whoWon() != Symbol.Empty || board.isFull())
                     break;                                      //skips ai move if the player won or board is full
-
-                if (play != 'm')
-                    currentPos = ai.move(currentPos);
-                else
-                    currentPos = champ.move(currentPos);
+                //board.draw();
+                if (play != 'm') ai.move(board);
+                else champ.move(board);
             }
 
-            drawBoard();
-            if (play != 'm')
-                ai.learn(winMove('X'), winMove('O'));         //teaches the "ai"
-            if (play == 'p') ai2.learn(winMove('O'), winMove('X'));
+            board.draw();
+            s = board.whoWon();
+            boolean oWin = s == Symbol.O, xWin = s == Symbol.X;
+            if (play != 'm') ai.learn(xWin, oWin);         //teaches the "ai"
+            if (play == 'p') ai2.learn(xWin, oWin);
 
-            boolean oWin = winMove('O'), xWin = winMove('X');
             if (oWin && play != 'm' || xWin && play == 'm')
                 System.out.println("You Win!");
             else if (xWin || oWin)
@@ -99,7 +96,6 @@ public class TicTacToe
             ai.printPos();
             System.out.println("Games won by AI: " + ai.getWon() + "\nGames lost by AI: " + ai.getLost()
                     + "\nGames tied: " + ai.getTied() + "\nTotal games: " + ai.getGames());
-//            System.out.println("\nExceptions: " + ai.getExceptions());
         }
 
         try {
@@ -111,21 +107,7 @@ public class TicTacToe
         } catch (Exception e) {System.out.println(e + " caught");}
     }
 
-    private static void drawBoard()
-    {
-        String str = currentPos.replace('e',' ');
-        System.out.println("   |   |");
-        System.out.println(" " + str.charAt(6) + " | " + str.charAt(7) + " | " + str.charAt(8));
-        System.out.println("___|___|___");
-        System.out.println("   |   |");
-        System.out.println(" " + str.charAt(3) + " | " + str.charAt(4) + " | " + str.charAt(5));
-        System.out.println("___|___|___");
-        System.out.println("   |   |");
-        System.out.println(" " + str.charAt(0) + " | " + str.charAt(1) + " | " + str.charAt(2));
-        System.out.println("   |   |\n");
-    }
-    private static void clearBoard() {currentPos = "eeeeeeeee";}
-    private static String playerMove(boolean playO)                 //robust question of where the player wants to go
+    private static void playerMove(boolean playO)                 //robust question of where the player wants to go
     {
         System.out.println("Where would you like to go?");
         int move = 0;
@@ -139,28 +121,14 @@ public class TicTacToe
             if (move < 1 || move > 9){                              //checks to make sure their number is on the board
                 System.out.println("Please enter a number 1-9.");
                 move = 0;
-            } else if (currentPos.charAt(move - 1) != 'e'){          //checks to make sure their box is empty
+            } else if (board.symbolAt(move - 1) != Symbol.Empty){          //checks to make sure their box is empty
                 System.out.println("Please choose a square that has not been played yet.");
                 move = 0;
             }
         }
         if (playO)
-            return currentPos.substring(0, move - 1) + 'O' + currentPos.substring(move, 9);
-        return currentPos.substring(0, move - 1) + 'X' + currentPos.substring(move, 9);
-    }
-    private static boolean winMove(char c) {return winMove(c, currentPos);}
-    static boolean winMove(char c, String board)//checks if current position has a win
-    {
-        if (board.charAt(4) == c && (board.charAt(0) == c && board.charAt(8) == c || board.charAt(2) == c && board.charAt(6) == c))
-            return true;                                    //checks diagonals
-        for (int i = 0; i < 3; i++)
-            if ((board.charAt(i) == c && board.charAt(i + 3) == c && board.charAt(i + 6) == c) || board.substring(3 * i,3 * i + 3).equals("" + c + c + c))
-                return true;                                //checks rows and columns
-        return false;
-    }
-    private static boolean full()               //checks if all spaces are used
-    {
-        return currentPos.indexOf('e') == -1;
+            board.move(move-1, Symbol.O);
+        board.move(move-1, Symbol.X);
     }
     private static String cont()                 //robust yes or no question
     {

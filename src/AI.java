@@ -1,75 +1,70 @@
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.Set;
+import java.util.*;
 import java.io.Serializable;
 
 public class AI implements Serializable
 {
-    private HashMap<String, ArrayList<Integer>> pos = new HashMap<>();              //key is current position and value is the moves available to ai
-    private HashMap<String, Integer> gamelog = new HashMap<>();                     //key is current position and value is the move made by ai
-    private int games, won, lost, tied, exceptions;
-    private char symbol;
+    private Map<String, MoveChance> pos = new HashMap<>();              //key is current position and value is the moves available to ai
+    private Map<String, Integer> gamelog = new HashMap<>();               //key is current position and value is the move made by ai
+    private int games, won, lost, tied;
+    private Symbol sym;
 
-    public AI(char s)
+    public AI(Symbol s)
     {
-        symbol = s;
+        sym = s;
     }
-    public String move(String currentPos) {                     //makes ai's move
-        if (currentPos.contains("e") && currentPos.indexOf('e') == currentPos.lastIndexOf('e'))
-            return makeMoveAt(currentPos, currentPos.indexOf('e'));
-
+    public void move(Board b) {                     //makes ai's move
         int move;
-        ArrayList<Integer> moves = new ArrayList<>();
-        if (!pos.containsKey(currentPos) || pos.get(currentPos).size() == 0) {
-            for (int i = 0; i < 9; i++)                         //if all choices deleted or new board state, it resets
-                if (currentPos.charAt(i) == 'e')                //checks which spaces are empty
-                    for (int j = 0; j < 1; j++)                 //adds j choices for each empty space
-                        moves.add(i);
-            pos.put(currentPos, moves);
-            move = getRand(moves);
-            gamelog.put(currentPos,move);
-            return makeMoveAt(currentPos, move);
-        }                                                       //ai knows what to do
-        move = getRand(pos.get(currentPos));                    //chooses random empty space
-        gamelog.put(currentPos, move);                          //adds game position and ai's move to the gamelog
-        return makeMoveAt(currentPos, move);
-    }
-    private String makeMoveAt(String currentPos, int i)
-    {
-        return currentPos.substring(0, i) + symbol + currentPos.substring(i + 1, 9);
-    }
-    private int getRand(ArrayList<Integer> moves)             // chooses random index from list
-    {
-        if (moves.size() == 0) {
-            exceptions++;
-            return 0;
+        if (b.numEmpty() == 1)
+            for (move = 0; move < 9; move++)
+                if (b.symbolAt(move) == Symbol.Empty) {
+                    b.move(move, sym);
+                    return;
+                }
+
+        boolean found = false;
+        Board extra = new Board(b);
+        extra.flipVertical();
+        if (pos.containsKey(b.toString())) found = true;
+        else if (pos.containsKey(extra.toString())) {
+            found = true;
+            b = extra;
         }
-        double choice = Math.random();                          //creates random decimal 0<= choice < 1
-        for (int i = 1; i < moves.size(); i++)
-            if (choice < 1. * i / moves.size())                 //checks if choice is under i/n terms of list
-                return moves.get(i - 1);                        //intellij doesn't like that the return is after an if statement even-
-        return moves.get(moves.size() - 1);                     //tho it will have an output, so this is a fail safe of the last term
+        for (int i = 0; i < 3 && !found; i++) {
+            b.rotate90CW();
+            extra.rotate90CW();
+            if (pos.containsKey(b.toString())) found = true;
+            else if (pos.containsKey(extra.toString())) {
+                found = true;
+                b = extra;
+            }
+        }
+        if (!found) pos.put(b.toString(), new MoveChance(b));
+
+        MoveChance moves;
+        moves = pos.get(b.toString());
+        if (moves.size() == 0)
+            moves.reset(b);
+        move = moves.getRand();
+        gamelog.put(b.toString(), move);
+        move = b.transformPos(move);
+        b.resetTrans();
+        b.move(move, sym);
     }
     public void learn(boolean win, boolean loss)                //how the ai changes it's behavior
     {
         games++;
         if (win) {                                              //if the ai won
             for (String key : gamelog.keySet())
-                if (pos.get(key).size() < 15)
-                    for (int j = 0; j < 1; j++)
-                        pos.get(key).add(gamelog.get(key));     //adds j more terms of the winning moves
+                pos.get(key).add(gamelog.get(key), 50, 1);
             won++;
         } else if (loss) {                                      //if the opponent won
             for (String key : gamelog.keySet())
-                pos.get(key).remove(gamelog.get(key));          //gets rid of losing moves
+                pos.get(key).remove(gamelog.get(key), 0, 1);
             lost++;
         } else {                                                //if the board was full and no one won
             for (String key : gamelog.keySet())
-                if (pos.get(key).size() > 11)
-                    pos.get(key).remove(gamelog.get(key));
-                else if (pos.get(key).size() < 5)
-                    pos.get(key).add(gamelog.get(key));
+                if (!pos.get(key).remove(gamelog.get(key), 11, 1))
+                    pos.get(key).add(gamelog.get(key), 5, 1);
             tied++;
         }
     }
@@ -80,23 +75,22 @@ public class AI implements Serializable
         games = won = lost = tied = 0;
     }
 
-    public void setPos(HashMap<String, ArrayList<Integer>> in)
+    public void setPos(Map<String, MoveChance> in)
     {
         pos = in;
     }
 
-    public HashMap<String, ArrayList<Integer>> getPos() { return pos; }
+    public Map<String, MoveChance> getPos() { return pos; }
     public Set<String> getKeys() { return pos.keySet(); }
-    public Collection<ArrayList<Integer>> getValues() { return pos.values(); }
+    public Collection<MoveChance> getValues() { return pos.values(); }
     public void clearGamelog(){ gamelog.clear(); }
-    public HashMap<String, Integer> getGamelog() { return gamelog; }
+    public Map<String, Integer> getGamelog() { return gamelog; }
     public Set<String> getGameKeys() { return gamelog.keySet(); }
     public Collection<Integer> getGameValues() { return gamelog.values(); }
     public int getGames() { return games; }
     public int getWon() { return won; }
     public int getLost() { return lost; }
     public int getTied() { return tied; }
-    public int getExceptions() { return exceptions; }
 
     public void printPos()
     {
@@ -111,6 +105,7 @@ public class AI implements Serializable
             System.out.println(str.substring(0, i));
             str = str.substring(i);
         }
-        System.out.println(str);
+        if (str.length() > 0)
+            System.out.println(str);
     }
 }

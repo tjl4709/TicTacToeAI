@@ -5,27 +5,35 @@ import java.io.Serializable;
 public class MinMaxTree implements Serializable
 {
     private String board;
-    private short score;
+    private short score, move;
+    private Symbol symbol;
     private MinMaxTree[] children;
 
-    private MinMaxTree(String b, int numChildren, boolean myTurn)
+    private MinMaxTree(Board b, int numChildren, boolean myTurn)
     {
-        board = b;
+        Board next;
+        board = b.toString();
+        symbol = myTurn ? Symbol.O : Symbol.X;
         score = (short) (myTurn ? -2 : 2);
-        if (TicTacToe.winMove('O', board))                            //I win: good end state, don't need children because game won't reach any state past this one
+        move = -1;
+        Symbol s = b.whoWon();
+        if (s == Symbol.O)                            //I win: good end state, don't need children because game won't reach any state past this one
             score = 1;
-        else if (TicTacToe.winMove('X', board))                       //opponent wins: bad end state, don't need children because game won't reach any state past this one
+        else if (s == Symbol.X)                       //opponent wins: bad end state, don't need children because game won't reach any state past this one
             score = -1;
         else if (numChildren > 0) {                     //numChildren == 0 means board is full: won't be any children
             children = new MinMaxTree[numChildren];
             int childNum = 0;
             for (int i = 0; i < 9; i++)
-                if (board.charAt(i) == 'e' && myTurn) { //if space is empty and it's my turn, create new node for board where I play in this space
-                    children[childNum] = new MinMaxTree(board.substring(0, i) + 'O' + board.substring(i + 1, 9), numChildren - 1, false);
-                    score = (short) Math.max(score, children[childNum++].getScore());
-                } else if (board.charAt(i) == 'e') {    //if space is empty and it's not my turn, create new node for board where opponent plays in this space
-                    children[childNum] = new MinMaxTree(board.substring(0, i) + 'X' + board.substring(i + 1, 9), numChildren - 1, true);
-                    score = (short) Math.min(score, children[childNum++].getScore());
+                if (b.symbolAt(i) == Symbol.Empty) { //if space is empty and it's my turn, create new node for board where I play in this space
+                    next = new Board(b);
+                    next.move(i, symbol);
+                    children[childNum] = new MinMaxTree(next, numChildren - 1, !myTurn);
+                    if (myTurn && children[childNum].getScore() > score || !myTurn && children[childNum].getScore() < score) {
+                        score = children[childNum].getScore();
+                        move = (short) i;
+                    }
+                    childNum++;
                 }
             if (myTurn)
                 children = getBestChildren();
@@ -41,11 +49,15 @@ public class MinMaxTree implements Serializable
             //save tree for when I play first
             file = new FileOutputStream("MinMaxTree1.ser");
             out = new ObjectOutputStream(file);
-            out.writeObject(new MinMaxTree("eeeeeeeee", 9, true));
+            out.writeObject(new MinMaxTree(new Board(), 9, true));
+            out.flush();
+            out.close();
+            file.close();
             //save tree for when opponent plays first
             file = new FileOutputStream("MinMaxTree2.ser");
             out = new ObjectOutputStream(file);
-            out.writeObject(new MinMaxTree("eeeeeeeee", 9, false));
+            out.writeObject(new MinMaxTree(new Board(), 9, false));
+            out.flush();
             out.close();
             file.close();
         } catch (Exception e) {e.printStackTrace();}
@@ -53,6 +65,8 @@ public class MinMaxTree implements Serializable
 
     public short getScore() {return score;}
     public String getBoard() {return board;}
+    public short getMove() {return move;}
+    public Symbol getSymbol() {return symbol;}
     public MinMaxTree[] getChildren() {return children;}
     public MinMaxTree setChild(String b)
     {
