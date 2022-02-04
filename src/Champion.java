@@ -33,6 +33,6 @@ public class Champion
     public void move(Board board)
     {
         root = root.setChild(board.toString()).getBestChild();
-        board.move(root.getMove(), root.getSymbol());
+        board.move(root.getMove(), Symbol.O);
     }
 }

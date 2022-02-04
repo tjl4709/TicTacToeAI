@@ -27,7 +27,7 @@ public class AI implements Serializable
         if (pos.containsKey(b.toString())) found = true;
         else if (pos.containsKey(extra.toString())) {
             found = true;
-            b = extra;
+            b.copy(extra);
         }
         for (int i = 0; i < 3 && !found; i++) {
             b.rotate90CW();
@@ -35,7 +35,7 @@ public class AI implements Serializable
             if (pos.containsKey(b.toString())) found = true;
             else if (pos.containsKey(extra.toString())) {
                 found = true;
-                b = extra;
+                b.copy(extra);
             }
         }
         if (!found) pos.put(b.toString(), new MoveChance(b));
@@ -63,8 +63,8 @@ public class AI implements Serializable
             lost++;
         } else {                                                //if the board was full and no one won
             for (String key : gamelog.keySet())
-                if (!pos.get(key).remove(gamelog.get(key), 11, 1))
-                    pos.get(key).add(gamelog.get(key), 5, 1);
+                if (!pos.get(key).remove(gamelog.get(key), 30, 1))
+                    pos.get(key).add(gamelog.get(key), 10, 1);
             tied++;
         }
     }

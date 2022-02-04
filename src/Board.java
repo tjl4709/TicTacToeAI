@@ -36,13 +36,17 @@ public class Board
         return true;
     }
     public Symbol symbolAt(int i) { return spaces[i]; }
-    public int numEmpty(){
+    public int numEmpty() {
         int n = 0;
         for (int i = 0; i < spaces.length; i++)
             if (spaces[i] == Symbol.Empty) n++;
         return n;
     }
-    public void clear() { Arrays.fill(spaces, Symbol.Empty); }
+    public void clear() {
+        Arrays.fill(spaces, Symbol.Empty);
+        preT = null;
+        trans.clear();
+    }
     //win conditions
     public boolean isFull() { return numEmpty() == 0; }
     public Symbol whoWon() {
@@ -55,7 +59,7 @@ public class Board
                 return spaces[i];
             //rows
             if (spaces[i*3] != Symbol.Empty && spaces[i*3] == spaces[i*3 + 1] && spaces[i*3] == spaces[i*3 + 2])
-                return spaces[i];
+                return spaces[i*3];
         }
         return Symbol.Empty;
     }
@@ -84,7 +88,7 @@ public class Board
         return i;
     }
     public void resetTrans() {
-        if (!trans.isEmpty()) {
+        if (preT != null) {
             trans.clear();
             spaces = preT;
             preT = null;

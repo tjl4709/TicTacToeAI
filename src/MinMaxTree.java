@@ -9,13 +9,13 @@ public class MinMaxTree implements Serializable
     private Symbol symbol;
     private MinMaxTree[] children;
 
-    private MinMaxTree(Board b, int numChildren, boolean myTurn)
+    private MinMaxTree(Board b, int numChildren, boolean myTurn, int moveMade)
     {
         Board next;
         board = b.toString();
         symbol = myTurn ? Symbol.O : Symbol.X;
         score = (short) (myTurn ? -2 : 2);
-        move = -1;
+        move = (short)moveMade;
         Symbol s = b.whoWon();
         if (s == Symbol.O)                            //I win: good end state, don't need children because game won't reach any state past this one
             score = 1;
@@ -28,10 +28,9 @@ public class MinMaxTree implements Serializable
                 if (b.symbolAt(i) == Symbol.Empty) { //if space is empty and it's my turn, create new node for board where I play in this space
                     next = new Board(b);
                     next.move(i, symbol);
-                    children[childNum] = new MinMaxTree(next, numChildren - 1, !myTurn);
+                    children[childNum] = new MinMaxTree(next, numChildren - 1, !myTurn, i);
                     if (myTurn && children[childNum].getScore() > score || !myTurn && children[childNum].getScore() < score) {
                         score = children[childNum].getScore();
-                        move = (short) i;
                     }
                     childNum++;
                 }
@@ -49,14 +48,14 @@ public class MinMaxTree implements Serializable
             //save tree for when I play first
             file = new FileOutputStream("MinMaxTree1.ser");
             out = new ObjectOutputStream(file);
-            out.writeObject(new MinMaxTree(new Board(), 9, true));
+            out.writeObject(new MinMaxTree(new Board(), 9, true, -1));
             out.flush();
             out.close();
             file.close();
             //save tree for when opponent plays first
             file = new FileOutputStream("MinMaxTree2.ser");
             out = new ObjectOutputStream(file);
-            out.writeObject(new MinMaxTree(new Board(), 9, false));
+            out.writeObject(new MinMaxTree(new Board(), 9, false, -1));
             out.flush();
             out.close();
             file.close();

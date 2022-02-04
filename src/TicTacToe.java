@@ -11,7 +11,6 @@ public class TicTacToe
     private static Board board = new Board();
 
     public static void main(String[] args) {
-        Symbol s;
         System.out.println("The aim of the game is to get three \"O\"s in a row. The board" +
                 "\nis laid out like the number pad with the 9th space on the top" +
                 "\nright and the 1st space on the bottom left. On your turn, " +
@@ -24,7 +23,7 @@ public class TicTacToe
                 FileInputStream file = new FileInputStream("file.ser");
                 ObjectInputStream in = new ObjectInputStream(file);
                 Map<String, MoveChance> pos = (Map<String, MoveChance>) in.readObject();
-                ai.setPos((HashMap<String, MoveChance>) pos);
+                ai.setPos(pos);
 //                ai2.setPos(pos);
                 in.close();
                 file.close();
@@ -39,12 +38,14 @@ public class TicTacToe
             games = (int) Math.pow(10, numPractice());
         }
 
-        boolean cont = true;
-        while (cont) {
+        Symbol s;
+        boolean cont, oppFirst;
+        do {
             board.clear();
             ai.clearGamelog();
             ai2.clearGamelog();
-            if (Math.random() < .5) {                           //50% chance ai goes first
+            oppFirst = Math.random() < .5;
+            if (oppFirst) {                           //50% chance ai goes first
                 if (play == 'm') {
                     champ.setTree(true);
                     champ.move(board);
@@ -89,7 +90,7 @@ public class TicTacToe
                 cont = !cont().equalsIgnoreCase("n");
             } else
                 cont = ai.getGames() < games;
-        }
+        } while (cont);
 
         if (play != 'm') {
             System.out.println("\nThank you for playing.");
@@ -126,9 +127,7 @@ public class TicTacToe
                 move = 0;
             }
         }
-        if (playO)
-            board.move(move-1, Symbol.O);
-        board.move(move-1, Symbol.X);
+        board.move(move-1, playO ? Symbol.O : Symbol.X);
     }
     private static String cont()                 //robust yes or no question
     {
